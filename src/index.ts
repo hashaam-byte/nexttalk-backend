@@ -15,6 +15,11 @@ app.use(corsMiddleware);
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Health check endpoint
+app.get('/', (_req, res: Response) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
