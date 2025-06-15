@@ -1,22 +1,21 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import fs from 'fs';
+import { AuthRequest } from '../types/auth';
 
-const prisma = new PrismaClient();
-
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, phone, bio } = req.body;
 
-    // Check if user already exists 
     const existingUser = await prisma.user.findUnique({
       where: { email }
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      res.status(400).json({ error: 'User already exists' });
+      return;
     }
 
     // Hash password
@@ -43,7 +42,7 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-export const getProfile = async (req: Request, res: Response): Promise<void> => {
+export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -51,8 +50,44 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findUniqueOrThrow({
       where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        bio: true,
+        profileImage: true,
+        generation: true
+      }
+    });
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching profile' });
+  }
+};
+
+export const updateProfile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { name, phone, bio } = req.body;
+
+    const user = await prisma.user.update({
+      where: { 
+        id: userId 
+      },
+      data: { 
+        name, 
+        phone: phone || null, 
+        bio: bio || null 
+      },
       select: {
         id: true,
         name: true,
@@ -62,35 +97,6 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         profileImage: true
       }
     });
-    
-    if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-    
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching profile' });
-  }
-};
-
-export const updateProfile = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const { name, phone, bio } = req.body;
-
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { name, phone, bio },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        bio: true,
-        image: true
-      }
-    });
 
     res.json(user);
   } catch (error) {
@@ -98,14 +104,16 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const uploadProfileImage = async (req: Request, res: Response) => {
+export const uploadProfileImage = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({ error: 'No file provided' });
+      res.status(400).json({ error: 'No file provided' });
+      return;
     }
 
     try {

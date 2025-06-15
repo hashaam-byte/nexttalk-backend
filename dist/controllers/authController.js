@@ -18,33 +18,36 @@ exports.getCurrentUser = exports.resetPassword = exports.forgotPassword = export
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const prisma_1 = require("../lib/prisma");
-const crypto_1 = __importDefault(require("crypto"));
-const JWT_SECRET = process.env.JWT_SECRET || 'vFy/=XQnbIfqPdzDRKsVaVEEZT+gjekoF7/Bp1lFyAMQ9';
+const crypto_1 = require("crypto");
 const register = async (req, res) => {
     try {
-        const { name, email, password, phone, bio, profileImage } = req.body;
+        const { name, email, password, phone, bio, profileImage, generation } = req.body;
         const existingUser = await prisma_1.prisma.user.findUnique({ where: { email } });
         if (existingUser) {
-            return res.status(400).json({ error: 'Email already registered' });
+            res.status(400).json({ error: 'Email already registered' });
+            return;
         }
         const hashedPassword = await bcrypt_1.default.hash(password, 10);
+        const userData = {
+            name,
+            email,
+            password: hashedPassword,
+            generation: generation || 'millennial',
+            phone: phone || null,
+            bio: bio || null,
+            profileImage: profileImage || null
+        };
         const user = await prisma_1.prisma.user.create({
-            data: {
-                name,
-                email,
-                password: hashedPassword,
-                phone,
-                bio,
-                profileImage
-            },
+            data: userData,
             select: {
                 id: true,
                 name: true,
                 email: true,
-                profileImage: true
+                profileImage: true,
+                generation: true
             }
         });
-        const token = jsonwebtoken_1.default.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
         res.status(201).json({ user, token });
     }
     catch (error) {
@@ -67,7 +70,8 @@ const login = async (req, res) => {
             }
         });
         if (!user || !await bcrypt_1.default.compare(password, user.password)) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            res.status(401).json({ error: 'Invalid credentials' });
+            return;
         }
         const token = jsonwebtoken_1.default.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
         const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
@@ -84,9 +88,10 @@ const forgotPassword = async (req, res) => {
         const { email } = req.body;
         const user = await prisma_1.prisma.user.findUnique({ where: { email } });
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            res.status(404).json({ error: 'User not found' });
+            return;
         }
-        const resetToken = crypto_1.default.randomBytes(32).toString('hex');
+        const resetToken = (0, crypto_1.randomBytes)(32).toString('hex');
         const resetTokenExpiry = new Date(Date.now() + 3600000);
         await prisma_1.prisma.user.update({
             where: { email },
@@ -109,7 +114,8 @@ const resetPassword = async (req, res) => {
             }
         });
         if (!user) {
-            return res.status(400).json({ error: 'Invalid or expired reset token' });
+            res.status(400).json({ error: 'Invalid or expired reset token' });
+            return;
         }
         const hashedPassword = await bcrypt_1.default.hash(newPassword, 10);
         await prisma_1.prisma.user.update({
@@ -131,7 +137,8 @@ const getCurrentUser = async (req, res) => {
     var _a;
     try {
         if (!((_a = req.user) === null || _a === void 0 ? void 0 : _a.id)) {
-            return res.status(401).json({ error: 'Unauthorized' });
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
         }
         const user = await prisma_1.prisma.user.findUnique({
             where: { id: req.user.id },
@@ -145,7 +152,8 @@ const getCurrentUser = async (req, res) => {
             }
         });
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            res.status(404).json({ error: 'User not found' });
+            return;
         }
         res.json({ user });
     }

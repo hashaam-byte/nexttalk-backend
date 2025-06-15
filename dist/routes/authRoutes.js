@@ -37,10 +37,13 @@ const express_1 = require("express");
 const authController = __importStar(require("../controllers/authController"));
 const errorHandler_1 = require("../utils/errorHandler");
 const router = (0, express_1.Router)();
-router.post('/login', (0, errorHandler_1.handleAsync)(authController.login));
-router.post('/register', (0, errorHandler_1.handleAsync)(authController.register));
-router.post('/forgot-password', (0, errorHandler_1.handleAsync)(authController.forgotPassword));
-router.post('/reset-password', (0, errorHandler_1.handleAsync)(authController.resetPassword));
-router.get('/me', (0, errorHandler_1.handleAsync)(authController.getCurrentUser));
+const wrapController = (fn) => (0, errorHandler_1.handleAsync)(async (req, res, _next) => {
+    await fn(req, res);
+});
+router.post('/login', wrapController(authController.login));
+router.post('/register', wrapController(authController.register));
+router.post('/forgot-password', wrapController(authController.forgotPassword));
+router.post('/reset-password', wrapController(authController.resetPassword));
+router.get('/me', wrapController(authController.getCurrentUser));
 exports.default = router;
 //# sourceMappingURL=authRoutes.js.map

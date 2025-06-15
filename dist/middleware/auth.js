@@ -13,8 +13,8 @@ const authenticateToken = (req, res, next) => {
         return;
     }
     try {
-        const user = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-        req.user = user;
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        req.user = { id: decoded.id, email: decoded.email };
         next();
     }
     catch (error) {

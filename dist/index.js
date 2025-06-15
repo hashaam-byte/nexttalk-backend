@@ -16,7 +16,7 @@ app.use(express_1.default.json());
 app.use(body_parser_1.default.urlencoded({ extended: true }));
 app.use('/auth', authRoutes_1.default);
 app.use('/user', userRoutes_1.default);
-const multerErrorHandler = (err, req, res, next) => {
+const multerErrorHandler = (err, _req, res, _next) => {
     if (err instanceof multer_1.default.MulterError) {
         res.status(400).json({
             error: 'File upload error',
@@ -24,9 +24,9 @@ const multerErrorHandler = (err, req, res, next) => {
         });
         return;
     }
-    next(err);
+    _next(err);
 };
-const globalErrorHandler = (err, req, res, next) => {
+const globalErrorHandler = (err, _req, res, _next) => {
     console.error('Error:', err);
     res.status(500).json({
         error: 'Internal server error',
@@ -35,8 +35,8 @@ const globalErrorHandler = (err, req, res, next) => {
 };
 app.use(multerErrorHandler);
 app.use(globalErrorHandler);
-app.use((req, res) => {
-    res.status(404).json({ error: 'Not found' });
+app.use((_req, res) => {
+    res.status(404).json({ error: 'Not Found' });
 });
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

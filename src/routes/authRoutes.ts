@@ -1,13 +1,18 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import { handleAsync } from '../utils/errorHandler';
 
 const router = Router();
 
-router.post('/login', handleAsync(authController.login));
-router.post('/register', handleAsync(authController.register));
-router.post('/forgot-password', handleAsync(authController.forgotPassword));
-router.post('/reset-password', handleAsync(authController.resetPassword));
-router.get('/me', handleAsync(authController.getCurrentUser));
+// Convert controller responses to void
+const wrapController = (fn: Function) => handleAsync(async (req, res, _next) => {
+  await fn(req, res);
+});
+
+router.post('/login', wrapController(authController.login));
+router.post('/register', wrapController(authController.register));
+router.post('/forgot-password', wrapController(authController.forgotPassword));
+router.post('/reset-password', wrapController(authController.resetPassword));
+router.get('/me', wrapController(authController.getCurrentUser));
 
 export default router;

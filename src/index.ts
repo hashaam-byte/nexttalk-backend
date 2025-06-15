@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
+import express, { Request, Response, ErrorRequestHandler } from 'express';
 import { corsMiddleware } from './middleware/cors';
 import bodyParser from 'body-parser';
 import multer from 'multer';
@@ -20,7 +20,7 @@ app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 
 // Error handling for multer
-const multerErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+const multerErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof multer.MulterError) {
     res.status(400).json({
       error: 'File upload error',
@@ -28,11 +28,11 @@ const multerErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
     });
     return;
   }
-  next(err);
+  _next(err);
 };
 
 // Global error handler
-const globalErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error('Error:', err);
   res.status(500).json({
     error: 'Internal server error',
@@ -45,8 +45,8 @@ app.use(multerErrorHandler);
 app.use(globalErrorHandler);
 
 // Not found handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ error: 'Not found' });
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: 'Not Found' });
 });
 
 app.listen(PORT, () => {

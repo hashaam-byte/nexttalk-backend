@@ -1,7 +1,8 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction, RequestHandler } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { AuthRequest } from '../types/auth';
 import * as userController from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -23,8 +24,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -36,38 +37,30 @@ const upload = multer({
 
 const router = Router();
 
-// Wrap file upload in error handling
-const handleUpload = (req: Request, res: Response, next: NextFunction) => {
-  upload(req, res, (err) => {
+const handleUpload: RequestHandler = (req, res, next) => {
+  upload(req as any, res, (err) => {
     if (err instanceof multer.MulterError) {
-      return res.status(400).json({ error: 'File upload error', details: err.message });
-    } else if (err) {
-      return res.status(500).json({ error: 'Error uploading file', details: err.message });
+      res.status(400).json({ error: 'File upload error', details: err.message });
+      return;
+    } 
+    if (err) {
+      res.status(500).json({ error: 'Error uploading file', details: err.message });
+      return;
     }
     next();
   });
 };
 
-// Apply middleware to all routes
-router.use((req: Request, res: Response, next: NextFunction) => {
+// Fix middleware and route handler typing
+router.use(((req: AuthRequest, res: Response, next: NextFunction) => {
   authenticateToken(req, res, next);
-});
+}) as RequestHandler);
 
-// Routes with proper typing
-router.get('/profile', (req: Request, res: Response, next: NextFunction) => {
-  userController.getProfile(req, res).catch(next);
-});
-
-router.put('/profile', (req: Request, res: Response, next: NextFunction) => {
-  userController.updateProfile(req, res).catch(next);
-});
-
-router.post('/profile-image', handleUpload, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await userController.uploadProfileImage(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
+router.post('/profile-image', 
+  handleUpload,
+  ((req: AuthRequest, res: Response, next: NextFunction) => {
+    userController.uploadProfileImage(req, res).catch(next);
+  }) as RequestHandler
+);
 
 export default router;
