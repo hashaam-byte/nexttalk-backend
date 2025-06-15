@@ -43,9 +43,14 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-export const getProfile = async (req: Request, res: Response) => {
+export const getProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -54,12 +59,13 @@ export const getProfile = async (req: Request, res: Response) => {
         email: true,
         phone: true,
         bio: true,
-        image: true
+        profileImage: true
       }
     });
     
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
     
     res.json(user);

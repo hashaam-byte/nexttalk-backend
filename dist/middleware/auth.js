@@ -9,15 +9,16 @@ const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (!token) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
     }
     try {
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+        const user = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        req.user = user;
         next();
     }
     catch (error) {
-        return res.status(403).json({ error: 'Invalid token' });
+        res.status(403).json({ error: 'Invalid token' });
     }
 };
 exports.authenticateToken = authenticateToken;

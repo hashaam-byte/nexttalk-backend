@@ -52,6 +52,10 @@ const getProfile = async (req, res) => {
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (!userId) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -60,11 +64,12 @@ const getProfile = async (req, res) => {
                 email: true,
                 phone: true,
                 bio: true,
-                image: true
+                profileImage: true
             }
         });
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            res.status(404).json({ error: 'User not found' });
+            return;
         }
         res.json(user);
     }

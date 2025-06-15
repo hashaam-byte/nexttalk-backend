@@ -47,10 +47,10 @@ if (!fs_1.default.existsSync(uploadsDir)) {
     fs_1.default.mkdirSync(uploadsDir, { recursive: true });
 }
 const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
+    destination: (_req, _file, cb) => {
         cb(null, uploadsDir);
     },
-    filename: (req, file, cb) => {
+    filename: (_req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
     }
@@ -89,8 +89,13 @@ router.get('/profile', (req, res, next) => {
 router.put('/profile', (req, res, next) => {
     userController.updateProfile(req, res).catch(next);
 });
-router.post('/profile-image', handleUpload, (req, res, next) => {
-    userController.uploadProfileImage(req, res).catch(next);
+router.post('/profile-image', handleUpload, async (req, res, next) => {
+    try {
+        await userController.uploadProfileImage(req, res);
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.default = router;
 //# sourceMappingURL=userRoutes.js.map

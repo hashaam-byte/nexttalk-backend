@@ -4,7 +4,6 @@ import path from 'path';
 import fs from 'fs';
 import * as userController from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
-import { v2 as cloudinary } from 'cloudinary';
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../../uploads');
@@ -13,10 +12,10 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (_req, _file, cb) => {
     cb(null, uploadsDir);
   },
-  filename: (req, file, cb) => {
+  filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
@@ -63,8 +62,12 @@ router.put('/profile', (req: Request, res: Response, next: NextFunction) => {
   userController.updateProfile(req, res).catch(next);
 });
 
-router.post('/profile-image', handleUpload, (req: Request, res: Response, next: NextFunction) => {
-  userController.uploadProfileImage(req, res).catch(next);
+router.post('/profile-image', handleUpload, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await userController.uploadProfileImage(req, res);
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;
