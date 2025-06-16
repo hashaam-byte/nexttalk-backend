@@ -5,6 +5,7 @@ import multer from 'multer';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import healthRoutes from './routes/healthRoutes';
+import { prisma } from './lib/prisma';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -26,7 +27,30 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/', (_req, res: Response) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString() 
+  });
+});
+
+app.get('/health', async (_req, res: Response) => {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ 
+      status: 'healthy',
+      database: 'connected',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'unhealthy',
+      error: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Routes
@@ -64,6 +88,29 @@ app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
-app.listen(PORT, () => {
+// Graceful shutdown handling
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+const gracefulShutdown = () => {
+  console.log('Received kill signal, shutting down gracefully');
+  server.close(async () => {
+    console.log('Closed out remaining connections');
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    console.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 30000);
+};
+
+// Handle different signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
