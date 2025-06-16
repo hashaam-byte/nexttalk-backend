@@ -1,13 +1,21 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 
 const router = Router();
 
-router.get('/health', async (_req: Request, res: Response) => {
+// Simple health check
+router.get('/', (_req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Database health check
+router.get('/db', async (_req, res) => {
   try {
-    // Test database connection
     await prisma.$queryRaw`SELECT 1`;
-    
     res.json({
       status: 'healthy',
       database: 'connected',

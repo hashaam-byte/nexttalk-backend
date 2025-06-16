@@ -1,15 +1,24 @@
 import express, { Request, Response, ErrorRequestHandler } from 'express';
-import { corsMiddleware } from './middleware/cors';
+import cors from 'cors';
 import bodyParser from 'body-parser';
 import multer from 'multer';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
+import healthRoutes from './routes/healthRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Apply CORS middleware first
-app.use(corsMiddleware);
+// Update CORS configuration
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://nexttalk-backend.railway.internal'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Middleware
 app.use(express.json());
@@ -23,6 +32,7 @@ app.get('/', (_req, res: Response) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
+app.use('/health', healthRoutes);
 
 // Error handling for multer
 const multerErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
