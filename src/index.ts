@@ -25,12 +25,8 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Health check endpoint
-app.get('/', (_req, res: Response) => {
-  res.json({ 
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
-  });
+app.get('/', (_req, res) => {
+  res.send('OK');
 });
 
 app.get('/health', async (_req, res: Response) => {
@@ -90,35 +86,23 @@ app.use((_req: Request, res: Response) => {
 // Add proper port handling
 const PORT = process.env.PORT || 5000;
 
-// Wrap the server startup in try-catch
-try {
-  const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log('Environment:', process.env.NODE_ENV);
-  });
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log('Environment:', process.env.NODE_ENV);
+});
 
-  // Graceful shutdown
-  const shutdown = async () => {
-    console.log('Shutting down gracefully...');
-    
-    try {
-      await prisma.$disconnect();
-      console.log('Disconnected from database');
-      
-      server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
-      });
-    } catch (err) {
-      console.error('Error during shutdown:', err);
-      process.exit(1);
-    }
-  };
+// Graceful shutdown
+const shutdown = async () => {
+  console.log('Shutting down gracefully...');
+  try {
+    await prisma.$disconnect();
+    console.log('Disconnected from database');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+};
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
-
-} catch (error) {
-  console.error('Server startup error:', error);
-  process.exit(1);
-}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
