@@ -8,7 +8,6 @@ import healthRoutes from './routes/healthRoutes';
 import { prisma } from './lib/prisma';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Update CORS configuration
 app.use(cors({
@@ -29,8 +28,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/', (_req, res: Response) => {
   res.json({ 
     status: 'healthy',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV
   });
 });
 
@@ -88,29 +87,38 @@ app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
-// Graceful shutdown handling
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Add proper port handling
+const PORT = process.env.PORT || 5000;
 
-const gracefulShutdown = () => {
-  console.log('Received kill signal, shutting down gracefully');
-  server.close(async () => {
-    console.log('Closed out remaining connections');
-    await prisma.$disconnect();
-    process.exit(0);
+// Wrap the server startup in try-catch
+try {
+  const server = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log('Environment:', process.env.NODE_ENV);
   });
 
-  // Force shutdown after 30 seconds
-  setTimeout(() => {
-    console.error('Could not close connections in time, forcefully shutting down');
-    process.exit(1);
-  }, 30000);
-};
+  // Graceful shutdown
+  const shutdown = async () => {
+    console.log('Shutting down gracefully...');
+    
+    try {
+      await prisma.$disconnect();
+      console.log('Disconnected from database');
+      
+      server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    } catch (err) {
+      console.error('Error during shutdown:', err);
+      process.exit(1);
+    }
+  };
 
-// Handle different signals
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
+} catch (error) {
+  console.error('Server startup error:', error);
+  process.exit(1);
+}
